@@ -1,0 +1,17 @@
+{
+  "name": "gmailnotify_pubsub",
+  "version": "0.0.1",
+  "dependencies": {
+    "@google-cloud/pubsub": "^0.18.0",
+    "@google-cloud/storage": "^5.14.0",
+    "googleapis": "^85.0.0",
+    "phin": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.1",
+    "jest": "^27.1.0"
+  },
+  "scripts": {
+    "test": "jest"
+  }
+}

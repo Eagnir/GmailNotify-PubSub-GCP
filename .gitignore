@@ -1,0 +1,13 @@
+# ignore node_modules anywhere in the project
+**/node_modules
+
+# ignore credentials
+**/credentials/*
+!credentials/sample*
+
+# ignore config
+**/config/*
+!config/sample*
+
+# ignore tests (for now)
+tests/*
