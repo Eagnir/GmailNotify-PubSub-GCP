@@ -11,3 +11,6 @@
 
 # ignore tests (for now)
 tests/*
+
+# ignore published files
+publish/*

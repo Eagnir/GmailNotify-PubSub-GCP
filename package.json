@@ -1,6 +1,7 @@
 {
   "name": "gmailnotify_pubsub",
   "version": "0.0.1",
+  "main": "main.js",
   "dependencies": {
     "@google-cloud/pubsub": "^0.18.0",
     "@google-cloud/storage": "^5.14.0",
@@ -8,10 +9,20 @@
     "phin": "^3.6.0"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^20.0.0",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
     "@types/jest": "^27.0.1",
-    "jest": "^27.1.0"
+    "archiver": "^5.3.0",
+    "jest": "^27.1.0",
+    "rollup": "^2.56.3",
+    "rollup-plugin-clear": "^2.0.7",
+    "rollup-plugin-copy": "^3.4.0",
+    "rollup-plugin-execute": "^1.1.1",
+    "rollup-plugin-generate-package-json": "^3.2.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "publish": "rollup -c"
   }
 }

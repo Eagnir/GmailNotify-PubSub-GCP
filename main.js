@@ -1,4 +1,4 @@
-const {appConfig} = require("./config/appconfig");
+const appConfig = require("./config/appconfig.json");
 const {google} = require('googleapis');
 
 const GoogleKeyFile = appConfig.gcp.auth.googleKeyFilePath;
