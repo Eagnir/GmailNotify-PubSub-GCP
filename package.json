@@ -24,5 +24,8 @@
   "scripts": {
     "test": "jest",
     "publish": "rollup -c"
+  },
+  "jest": {
+    "testTimeout": 10000
   }
 }

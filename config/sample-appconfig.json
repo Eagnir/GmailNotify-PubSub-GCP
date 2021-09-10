@@ -9,6 +9,8 @@
         "storage": {
             "bucketName": "",
             "rootFolderName": "",
+            "debugFolderName": "",
+            "emailsFolderName": "",
             "historyFilename": ""
         },
         "auth":{
@@ -18,6 +20,7 @@
     },
     "gmail": {
         "scopes": [],
-        "labelsIds": []
+        "labelsIds": [],
+        "filterAction": ""
     }
 }
