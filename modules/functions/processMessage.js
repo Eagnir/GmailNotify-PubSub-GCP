@@ -4,37 +4,42 @@ const gmail = require("../gmail");
 
 const ROOT_FOLDER = appConfig.gcp.storage.rootFolderName;
 const HISTORY_FILE_PATH = ROOT_FOLDER + appConfig.gcp.storage.historyFilename;
-const EMAILS_FOLDER_PATH = ROOT_FOLDER + appConfig.gcp.storage.emailsFolderName;
-const DEBUG_FOLDER_PATH = ROOT_FOLDER + appConfig.gcp.storage.debugFolderName;
+const EMAILS_FOLDER = ROOT_FOLDER + appConfig.gcp.storage.emailsFolderName;
+const DEBUG_FOLDER = ROOT_FOLDER + appConfig.gcp.storage.debugFolderName;
 
 var GMAIL = null;
 
 exports.ProcessMessage = async (event, context) => {
-    const message = event.data
-        ? Buffer.from(event.data, 'base64').toString()
-        : 'No data provided';
-    const msgObj = JSON.parse(message);
+    try 
+    {
+        const message = event.data
+            ? Buffer.from(event.data, 'base64').toString()
+            : 'No data provided';
+        const msgObj = JSON.parse(message);
 
-    storage.fileExist(HISTORY_FILE_PATH).then(function (data) {
-        const exists = data[0];
-        if (exists) {
-            storage.fetchFileContent(HISTORY_FILE_PATH).then((data) => {
-                const prevMsgObj = JSON.parse(data[0]);
-                moveForward(prevMsgObj.historyId, msgObj);
-            });
-        }
-        else {
-            console.debug("History File Did not Exist");
-            storage.saveFileContent(HISTORY_FILE_PATH, JSON.stringify(msgObj));
-        }
-    });
-    console.debug("Function execution completed");
+        return storage.fileExist(HISTORY_FILE_PATH).then(async function (exists) {
+            if (exists) {
+                await storage.fetchFileContent(HISTORY_FILE_PATH).then(async (data) => {
+                    const prevMsgObj = JSON.parse(data[0]);
+                    await moveForward(prevMsgObj.historyId, msgObj);
+                });
+            }
+            else {
+                console.debug("History File Did not Exist");
+                await storage.saveFileContent(HISTORY_FILE_PATH, JSON.stringify(msgObj));
+            }
+            console.debug("Function execution completed");
+        });
+    }
+    catch(ex) {
+        throw new Error("Error occured while processing message: " + ex);   
+    }
 };
 
 async function moveForward(prevHistoryId, msgObj) {
     GMAIL = await gmail.getAuthenticatedGmail();
     storage.saveFileContent(HISTORY_FILE_PATH, JSON.stringify(msgObj));
-    fetchMessageFromHistory(prevHistoryId);
+    await fetchMessageFromHistory(prevHistoryId);
 }
 
 async function fetchMessageFromHistory(historyId) {
@@ -43,52 +48,73 @@ async function fetchMessageFromHistory(historyId) {
             startHistoryId: historyId,
             userId: 'me',
             labelId: appConfig.gmail.labelsIds[0],
-            historyTypes: ["messageAdded"]
+            historyTypes: ["messageAdded","labelAdded"]
         });
         var history = res.data.history;
         if (history != null) {
             if (history.length > 0) {
                 // First History
                 var msgs = [];
-                const messages = history[0].messages;
-                for (let index = 0; index < messages.length; index++) { msgs.push(messages[index].id); }
-                msgs = msgs.filter((x, i) => i === msgs.indexOf(x)); // Remove duplicates
+                history.forEach(item => {
+                    const labelsAdded = item.labelsAdded;
+                    const messagesAdded = item.messagesAdded;
+                    if(labelsAdded!=null)
+                        for (let index = 0; index < labelsAdded.length; index++) { msgs.push({id: labelsAdded[index].message.id, threadId: labelsAdded[index].message.threadId}); }
+                    
+                    if(messagesAdded!=null)
+                        for (let index = 0; index < messagesAdded.length; index++) { msgs.push({id: messagesAdded[index].message.id, threadId: messagesAdded[index].message.threadId}); }
+                });
+
+                if(msgs.length>0)
+                    msgs = msgs.reduce((newArr, current) => {
+                        const x = newArr.find(item => item.id === current.id || item.threadId === current.threadId);
+                        if (!x) {
+                          return newArr.concat([current]);
+                        } else {
+                          return newArr;
+                        }
+                      }, []) // Remove duplicates based on if id or threadId matches
+
+                var pCount = 0;
+                var msgIds = [];
                 for (let index = 0; index < msgs.length; index++) {
-                    const messageId = msgs[index];
+                    const messageId = msgs[index].id;
                     const msg = await gmail.getMessageData(messageId); // Fetch content for each unique message
                     if (msg == null || msg == undefined) {
                         console.error("Message object was null: id: " + messageId);
                         continue;
                     }
-                    processEmail(msg, messageId);
+                    pCount++;
+                    msgIds.push(messageId);
+                    await processEmail(msg, messageId);
                 }
+                console.log("Message count: " + msgs.length + " | Processed Messages: " + pCount);
+                console.log("Messages ID: " + msgIds.join(","));
 
             }
         }
-        storage.saveFileContent(DEBUG_FOLDER_PATH + historyId + ".json", JSON.stringify(res.data));
+        await storage.saveFileContent(DEBUG_FOLDER + historyId + ".json", JSON.stringify(res.data));
         return res.data;
     }
     catch (ex) {
-        console.error("ERROR: " + ex);
+        throw new Error("fetchMessageFromHistory ERROR: " + ex);
     }
 }
 
-function processEmail(msg, messageId) {
+async function processEmail(msg, messageId) {
     try {
 
         const payload = msg.data.payload;
         const headers = payload.headers; // array of header objects containing subject and from values.
         const parts = payload.parts; // array of content (different types, plain, html, etc.)
+        const emailType = payload.mimeType; // Either multipart or plain text is supported
         if (headers == null || headers == undefined) {
             console.debug("Header is not defined");
             return;
         }
-        if (parts == null || parts == undefined) {
-            console.debug("Parts is not defined");
-            return;
-        }
-
+        
         var email = {
+            id: msg.data.id,
             from: "",
             to: "",
             subject: "",
@@ -96,6 +122,30 @@ function processEmail(msg, messageId) {
             bodyText: "",
             bodyHtml: ""
         };
+
+        if(emailType.includes("plain")) {
+            email.bodyText = payload.body.data;// Value is Base64 || Buffer.from(part.body.data, 'base64').toString('ascii');
+        }
+        else {
+            if (parts == null || parts == undefined) {
+                console.debug("Parts is not defined for msgId: " + messageId +  " mimeType: " + emailType);
+                email.bodyText = payload.body.data;
+            }
+            else {
+                parts.forEach(part => {
+                    const mimeType = part.mimeType;
+                    switch (mimeType) {
+                        case "text/plain":
+                            email.bodyText = part.body.data;// Value is Base64 || Buffer.from(part.body.data, 'base64').toString('ascii');
+                            break;
+                        case "text/html":
+                            email.bodyHtml = part.body.data;// Value is Base64 || Buffer.from(part.body.data, 'base64').toString('ascii');
+                            break;
+                    }
+                });
+            }
+        }
+
 
         headers.forEach(header => {
             const name = header.name;
@@ -112,35 +162,29 @@ function processEmail(msg, messageId) {
             }
         });
 
-        parts.forEach(part => {
-            const mimeType = part.mimeType;
-            switch (mimeType) {
-                case "text/plain":
-                    email.bodyText = part.body.data;// Value is Base64 || Buffer.from(part.body.data, 'base64').toString('ascii');
-                    break;
-                case "text/html":
-                    email.bodyHtml = part.body.data;// Value is Base64 || Buffer.from(part.body.data, 'base64').toString('ascii');
-                    break;
-            }
-        });
-        storage.saveFileContent(DEBUG_FOLDER_PATH + messageId + "_msg.json", JSON.stringify(msg));
-        storage.saveFileContent(EMAILS_FOLDER_PATH + messageId + "_email.json", JSON.stringify(email));
+        
+        storage.saveFileContent(DEBUG_FOLDER + messageId + "_msg.json", JSON.stringify(msg));
+        await storage.saveFileContent(EMAILS_FOLDER + messageId + "_email.json", JSON.stringify(email));
 
         var fromName = email.from.split("<")[0].trim();
         var notificationText = fromName + ": " + email.subject + "\n\n" + email.snippet;
+        await sendNotification(notificationText);
 
-        const p = require('phin');
-        p({
-            url: appConfig.slack.webhookUrl,
-            method: 'POST',
-            headers: {
-                "Content-type": "application/json"
-            },
-            data: { text: notificationText }
-        });
         console.debug("Message notification sent!: " + email.from);
     }
     catch (ex) {
-        console.error("process email error: " + ex);
+        throw new Error("process email error: " + ex);
     }
+}
+
+async function sendNotification(text) {
+    const p = require('phin');
+    await p({
+        url: appConfig.external.webhookUrl,
+        method: 'POST',
+        headers: {
+            "Content-type": "application/json"
+        },
+        data: { text: text }
+    });
 }

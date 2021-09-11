@@ -1,6 +1,6 @@
 {
   "name": "gmailnotify_pubsub",
-  "version": "0.0.1",
+  "version": "0.0.14",
   "main": "main.js",
   "dependencies": {
     "@google-cloud/pubsub": "^0.18.0",

@@ -1,26 +1,26 @@
 {
-    "slack":{
-        "webhookUrl": ""
+    "external":{
+        "webhookUrl": "A_URL_To_Make_The_Post_Call_To"
     },
     "gcp":{
         "pubsub":{
-            "topic": ""
+            "topic": "Topic_Path"
         },
         "storage": {
-            "bucketName": "",
+            "bucketName": "Bucket_Name_Only",
             "rootFolderName": "",
-            "debugFolderName": "",
-            "emailsFolderName": "",
-            "historyFilename": ""
+            "debugFolderName": "debug/",
+            "emailsFolderName": "emails/",
+            "historyFilename": "history.json"
         },
         "auth":{
-            "googleKeyFilePath": "",
-            "subject": ""
+            "googleKeyFilePath": "credentials/google-key.json",
+            "subject": "GMAIL_Email_Address"
         }
     },
     "gmail": {
-        "scopes": [],
-        "labelsIds": [],
-        "filterAction": ""
+        "scopes": ["https://www.googleapis.com/auth/gmail.readonly"],
+        "labelsIds": ["UNREAD"],
+        "filterAction": "include"
     }
 }

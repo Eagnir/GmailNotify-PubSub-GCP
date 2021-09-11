@@ -14,6 +14,7 @@ exports.startWatch = async (req, res) => {
     }
     catch(ex) {
       res.status(500).send("Error occured: " + ex);
+      throw new Error("Error occured while starting gmail watch: " + ex);
     }
   };
   

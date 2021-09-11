@@ -15,7 +15,7 @@ const authClient = new JWT({
 
 var Authenticated_Gmail = null;
 
-exports.getAuthenticatedGmail = async () => {
+async function getAuthenticatedGmail() {
     try {
         if (Authenticated_Gmail != null)
             return Authenticated_Gmail;
@@ -29,11 +29,13 @@ exports.getAuthenticatedGmail = async () => {
     catch (ex) {
         throw ex;
     }
-}
+} 
+
+exports.getAuthenticatedGmail = getAuthenticatedGmail;
 
 exports.getHistoryList = async (options) => {
     try {
-        await this.getAuthenticatedGmail();
+        await getAuthenticatedGmail();
         return Authenticated_Gmail.users.history.list(options);
     }
     catch (ex) {
@@ -44,7 +46,7 @@ exports.getHistoryList = async (options) => {
 
 exports.getMessageData = async (messageId) => {
     try {
-        await this.getAuthenticatedGmail();
+        await getAuthenticatedGmail();
         return Authenticated_Gmail.users.messages.get({
             userId: 'me',
             id: messageId
