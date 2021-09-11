@@ -17,8 +17,11 @@ var Authenticated_Gmail = null;
 
 async function getAuthenticatedGmail() {
     try {
-        if (Authenticated_Gmail != null)
+        if (Authenticated_Gmail != null){
+            console.log("Skipping authentication call");
             return Authenticated_Gmail;
+        }
+        console.log("Authentication call executed");
         await authClient.authorize();
         Authenticated_Gmail = google.gmail({
             auth: authClient,

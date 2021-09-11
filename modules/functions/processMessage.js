@@ -44,12 +44,14 @@ async function moveForward(prevHistoryId, msgObj) {
 
 async function fetchMessageFromHistory(historyId) {
     try {
+        console.time("getHistoryList");
         const res = await gmail.getHistoryList({
             startHistoryId: historyId,
             userId: 'me',
             labelId: appConfig.gmail.labelsIds[0],
             historyTypes: ["messageAdded","labelAdded"]
         });
+        console.timeEnd("getHistoryList");
         var history = res.data.history;
         if (history != null) {
             if (history.length > 0) {
@@ -59,10 +61,15 @@ async function fetchMessageFromHistory(historyId) {
                     const labelsAdded = item.labelsAdded;
                     const messagesAdded = item.messagesAdded;
                     if(labelsAdded!=null)
-                        for (let index = 0; index < labelsAdded.length; index++) { msgs.push({id: labelsAdded[index].message.id, threadId: labelsAdded[index].message.threadId}); }
+                        for (let index = 0; index < labelsAdded.length; index++) {
+                            if(labelsAdded[index].labelIds.some(r=> appConfig.gmail.labelsIds.indexOf(r) >= 0)) // Check if the label IDs we monitor is one of the labels being added
+                                msgs.push({id: labelsAdded[index].message.id, threadId: labelsAdded[index].message.threadId});
+                        }
                     
                     if(messagesAdded!=null)
-                        for (let index = 0; index < messagesAdded.length; index++) { msgs.push({id: messagesAdded[index].message.id, threadId: messagesAdded[index].message.threadId}); }
+                        for (let index = 0; index < messagesAdded.length; index++) {
+                            msgs.push({id: messagesAdded[index].message.id, threadId: messagesAdded[index].message.threadId});
+                        }
                 });
 
                 if(msgs.length>0)
@@ -73,20 +80,24 @@ async function fetchMessageFromHistory(historyId) {
                         } else {
                           return newArr;
                         }
-                      }, []) // Remove duplicates based on if id or threadId matches
+                      }, []) // Remove duplicates based on if id or threadId matches with another element
 
                 var pCount = 0;
                 var msgIds = [];
                 for (let index = 0; index < msgs.length; index++) {
                     const messageId = msgs[index].id;
+                    console.time("getMessageData");
                     const msg = await gmail.getMessageData(messageId); // Fetch content for each unique message
+                    console.timeEnd("getMessageData");
                     if (msg == null || msg == undefined) {
                         console.error("Message object was null: id: " + messageId);
                         continue;
                     }
                     pCount++;
                     msgIds.push(messageId);
+                    console.time("processEmail");
                     await processEmail(msg, messageId);
+                    console.timeEnd("processEmail");
                 }
                 console.log("Message count: " + msgs.length + " | Processed Messages: " + pCount);
                 console.log("Messages ID: " + msgIds.join(","));
@@ -164,13 +175,13 @@ async function processEmail(msg, messageId) {
 
         
         storage.saveFileContent(DEBUG_FOLDER + messageId + "_msg.json", JSON.stringify(msg));
-        await storage.saveFileContent(EMAILS_FOLDER + messageId + "_email.json", JSON.stringify(email));
+        storage.saveFileContent(EMAILS_FOLDER + messageId + "_email.json", JSON.stringify(email));
 
         var fromName = email.from.split("<")[0].trim();
         var notificationText = fromName + ": " + email.subject + "\n\n" + email.snippet;
         await sendNotification(notificationText);
 
-        console.debug("Message notification sent!: " + email.from);
+        console.debug("Message notification sent!: " + email.from + " - " + messageId);
     }
     catch (ex) {
         throw new Error("process email error: " + ex);
