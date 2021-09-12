@@ -19,7 +19,8 @@
 	"extensions": [
 		"dbaeumer.vscode-eslint",
 		"vscode-icons-team.vscode-icons",
-		"orta.vscode-jest"
+		"orta.vscode-jest",
+		"oouo-diogo-perdigao.docthis"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.

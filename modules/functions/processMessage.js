@@ -9,6 +9,13 @@ const DEBUG_FOLDER = ROOT_FOLDER + appConfig.gcp.storage.debugFolderName;
 
 var GMAIL = null;
 
+/**
+ * A Google Cloud Function with an Pub/Sub trigger signature.
+ *
+ * @param {Object} event The Pub/Sub message
+ * @param {Object} context The event metadata
+ * @return {Promise} A Promise so the GCP function does not stop execution till the returned promise is resolved or gets rejected. 
+ */
 exports.ProcessMessage = async (event, context) => {
     try 
     {
@@ -36,12 +43,25 @@ exports.ProcessMessage = async (event, context) => {
     }
 };
 
+/**
+ * A helper function to further process the previous history id and save the current Message Object for the next run's previous history id
+ *
+ * @param {String} prevHistoryId Previous history id which will be queried for the latest messages
+ * @param {Object} msgObj The current message object containing the new history id
+ */
 async function moveForward(prevHistoryId, msgObj) {
     GMAIL = await gmail.getAuthenticatedGmail();
     storage.saveFileContent(HISTORY_FILE_PATH, JSON.stringify(msgObj));
     await fetchMessageFromHistory(prevHistoryId);
 }
 
+/**
+ * Function to fetch the messages/updates starting from the given history id, then continue to process the received updates to identify the messages that needs to be send to the external webhook
+ *
+ * @param {String} historyId
+ * @return {Object} Returns the list of updates from the given history id
+ * @see {@link gmail.getHistoryList}
+ */
 async function fetchMessageFromHistory(historyId) {
     try {
         console.time("getHistoryList");
@@ -112,6 +132,14 @@ async function fetchMessageFromHistory(historyId) {
     }
 }
 
+/**
+ * Helper function to process the email data received from the Gmail API users.messages.get endpoint
+ *
+ * @param {Object} msg The message object that contains all the metadata of an email, like subject, snippet, body, to, form, etc.
+ * @param {String} messageId The message ID of the message object being processed
+ * @return {Null} Does not return anything, must use await if you want it to complete the processing but not mandatory to await
+ * @see For detailed message object properties, visit {@link https://developers.google.com/gmail/api/reference/rest/v1/users.messages#Message}
+ */
 async function processEmail(msg, messageId) {
     try {
 
@@ -188,6 +216,11 @@ async function processEmail(msg, messageId) {
     }
 }
 
+/**
+ * Function to execute an external WebHook via a HTTP Post method, passing the text data provided.
+ *
+ * @param {String} text The text data that needs to be send via HTTP Post to the external url (WebHook)
+ */
 async function sendNotification(text) {
     const p = require('phin');
     await p({

@@ -15,6 +15,7 @@ RUN apt-get upgrade -y
 
 # Install wget to download files
 RUN apt-get -y install wget
+RUN apt-get -y install zip
 
 # Create temp directory
 WORKDIR /temp_downloads

@@ -15,6 +15,11 @@ const authClient = new JWT({
 
 var Authenticated_Gmail = null;
 
+/**
+ * Gets the authenticated Gmail API if already authenticated else performs an authentication
+ *
+ * @return {google.gmail} with the authClient attached and ready to call Gmail API 
+ */
 async function getAuthenticatedGmail() {
     try {
         if (Authenticated_Gmail != null){
@@ -36,6 +41,13 @@ async function getAuthenticatedGmail() {
 
 exports.getAuthenticatedGmail = getAuthenticatedGmail;
 
+/**
+ * Performs the Gmail API call to users.history.list Endpoint
+ *
+ * @param {*} options Query parameters as per the Gmail API documentation link below.
+ * @return {Promise} A Promise that will resolve with the history data based on the options provided 
+ * @see {@link https://developers.google.com/gmail/api/reference/rest/v1/users.history/list}
+ */
 exports.getHistoryList = async (options) => {
     try {
         await getAuthenticatedGmail();
@@ -47,6 +59,13 @@ exports.getHistoryList = async (options) => {
     }
 }
 
+/**
+ * Performs the Gmail API call to users.messages.get Endpoint
+ *
+ * @param {String} messageId  The message ID for which details (data) is required
+ * @return {Promise} A Promise that will resolve with the message details (data) for the given message ID
+ * @see {@link https://developers.google.com/gmail/api/reference/rest/v1/users.messages/get} 
+ */
 exports.getMessageData = async (messageId) => {
     try {
         await getAuthenticatedGmail();
