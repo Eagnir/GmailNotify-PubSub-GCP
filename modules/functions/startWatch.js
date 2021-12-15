@@ -11,8 +11,11 @@ const gmail = require("../gmail");
 exports.startWatch = async (req, res) => {
     try {
       const authGmail = await gmail.getAuthenticatedGmail();
-      const resp = await authGmail.users.watch({
-        'userId': 'me',
+      var resp = await authGmail.users.stop({
+        userId: 'me',
+      });
+      resp = await authGmail.users.watch({
+        userId: 'me',
         topicName: appConfig.gcp.pubsub.topic,
         labelIds: appConfig.gmail.labelsIds,
         labelFilterAction: appConfig.gmail.filterAction
@@ -24,4 +27,3 @@ exports.startWatch = async (req, res) => {
       throw new Error("Error occured while starting gmail watch: " + ex);
     }
   };
-  
